@@ -12,6 +12,14 @@ export async function ensureTable() {
     status     TEXT NOT NULL DEFAULT 'New',
     notes      TEXT NOT NULL DEFAULT ''
   )`;
+  await sql`CREATE TABLE IF NOT EXISTS tasks (
+    id         SERIAL PRIMARY KEY,
+    lead_id    INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+    title      TEXT NOT NULL,
+    due_date   DATE,
+    done       BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`;
 }
 
 export { sql };

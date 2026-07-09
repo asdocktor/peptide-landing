@@ -71,6 +71,36 @@
 
   .empty { padding: 50px 20px; text-align: center; color: var(--muted); }
   .saved { color: var(--won); font-size: 11px; margin-top: 3px; height: 13px; }
+
+  /* follow-ups */
+  .followups { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 20px; }
+  .followups h2 { font-size: 14px; color: var(--navy); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .followups h2 .badge { background: var(--blue); color: #fff; font-size: 11px; border-radius: 999px; padding: 2px 8px; }
+  .fu-list { display: flex; flex-direction: column; gap: 8px; }
+  .fu { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
+  .fu.overdue { border-color: #F2C7C1; background: #FDF3F1; }
+  .fu .due { font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+  .fu.overdue .due { color: var(--lost); }
+  .fu .who { font-weight: 700; color: var(--navy); }
+  .fu .what { color: var(--ink); flex: 1; }
+  .fu-empty { color: var(--muted); font-size: 13px; }
+  .mini { background: none; border: 1px solid var(--line); color: var(--blue); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .mini:hover { border-color: var(--blue); background: rgba(47,129,196,.06); }
+  .fu .mini { margin-left: auto; }
+
+  /* modal */
+  .modal { position: fixed; inset: 0; background: rgba(14,44,72,.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+  .modal.show { display: flex; }
+  .modal-card { background: #fff; border-radius: 16px; padding: 26px; width: 100%; max-width: 400px; }
+  .modal-card h3 { color: var(--navy); font-size: 18px; margin-bottom: 4px; }
+  .modal-card .sub { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+  .modal-card label { display: block; font-size: 12px; font-weight: 700; color: var(--navy); margin: 14px 0 5px; }
+  .modal-card input { width: 100%; padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px; font-size: 15px; font-family: inherit; }
+  .modal-card input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(47,129,196,.15); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .modal-actions .btn { flex: 1; }
+  .btn-ghost { background: #fff; color: var(--muted); border: 1px solid var(--line); }
+  .btn-ghost:hover { background: var(--bg); color: var(--ink); }
 </style>
 
 <!-- ============ LOGIN GATE ============ -->
@@ -103,6 +133,8 @@
 
   <div class="tiles" id="tiles"></div>
 
+  <div class="followups" id="followups"></div>
+
   <div class="toolbar">
     <input type="search" id="search" placeholder="Search name, company, email…">
     <span class="count" id="count"></span>
@@ -111,12 +143,28 @@
   <div class="table-wrap">
     <table>
       <thead>
-        <tr><th>Date</th><th>Name / Company</th><th>Email</th><th>Where they are</th><th>Status</th><th>Notes</th></tr>
+        <tr><th>Date</th><th>Name / Company</th><th>Email</th><th>Where they are</th><th>Status</th><th>Notes</th><th>Follow-up</th></tr>
       </thead>
       <tbody id="rows"></tbody>
     </table>
     <div class="empty" id="empty" style="display:none">No leads yet. They'll show up here the moment someone submits the form.</div>
   </div>
+</div>
+
+<!-- Add-follow-up modal -->
+<div class="modal" id="task-modal">
+  <form class="modal-card" id="task-form">
+    <h3>New follow-up</h3>
+    <div class="sub" id="task-lead"></div>
+    <label for="task-title">What do you need to do?</label>
+    <input id="task-title" placeholder="e.g. Send vendor shortlist" required>
+    <label for="task-due">Due date</label>
+    <input id="task-due" type="date">
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="task-cancel">Cancel</button>
+      <button type="submit" class="btn">Add task</button>
+    </div>
+  </form>
 </div>
 
 <script>
@@ -126,6 +174,7 @@
   const gateErr = document.getElementById('gate-err');
   let PW = sessionStorage.getItem('tsb_pw') || '';
   let LEADS = [];
+  let TASKS = [];
 
   function authHeaders(extra) { return Object.assign({ 'Authorization': 'Bearer ' + PW }, extra || {}); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -138,7 +187,59 @@
     const data = await res.json();
     LEADS = data.leads || [];
     render();
+    loadTasks().catch(() => {});
   }
+
+  function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+  async function loadTasks() {
+    const res = await fetch('/api/tasks', { headers: authHeaders() });
+    if (!res.ok) throw new Error('tasks');
+    TASKS = (await res.json()).tasks || [];
+    renderTasks();
+  }
+
+  function renderTasks() {
+    const el = document.getElementById('followups');
+    const today = todayStr();
+    if (!TASKS.length) {
+      el.innerHTML = '<h2>⏰ Follow-ups</h2><div class="fu-empty">No open follow-ups. Add one from any lead below with “+ Task”.</div>';
+      return;
+    }
+    el.innerHTML = '<h2>⏰ Follow-ups <span class="badge">' + TASKS.length + '</span></h2><div class="fu-list">' +
+      TASKS.map(t => {
+        const iso = t.due_date ? String(t.due_date).slice(0, 10) : '';
+        const overdue = iso && iso < today;
+        const due = iso ? new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date';
+        return `<div class="fu ${overdue ? 'overdue' : ''}">
+          <span class="due">${overdue ? 'Overdue · ' : ''}${due}</span>
+          <span class="who">${esc(t.lead_name)}</span>
+          <span class="what">${esc(t.title)}</span>
+          <button class="mini" data-done="${t.id}">Mark done</button>
+        </div>`;
+      }).join('') + '</div>';
+    el.querySelectorAll('[data-done]').forEach(b => b.addEventListener('click', () => completeTask(b.dataset.done)));
+  }
+
+  async function completeTask(id) {
+    try {
+      const res = await fetch('/api/tasks', { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id, done: true }) });
+      if (!res.ok) throw new Error();
+      TASKS = TASKS.filter(t => String(t.id) !== String(id));
+      renderTasks();
+    } catch (e) { alert('Could not update the task.'); }
+  }
+
+  let taskLeadId = null;
+  function openTaskModal(leadId, name) {
+    taskLeadId = leadId;
+    document.getElementById('task-lead').textContent = 'For ' + name;
+    document.getElementById('task-title').value = '';
+    document.getElementById('task-due').value = '';
+    document.getElementById('task-modal').classList.add('show');
+    setTimeout(() => document.getElementById('task-title').focus(), 30);
+  }
+  function closeTaskModal() { document.getElementById('task-modal').classList.remove('show'); taskLeadId = null; }
 
   function render() {
     const q = (document.getElementById('search').value || '').toLowerCase();
@@ -169,10 +270,12 @@
           <textarea class="notes" data-id="${l.id}" placeholder="Add a note…">${esc(l.notes)}</textarea>
           <div class="saved" data-saved="${l.id}"></div>
         </td>
+        <td><button class="mini" data-add="${l.id}" data-name="${esc(l.name)}">+ Task</button></td>
       </tr>`).join('');
 
     document.querySelectorAll('select.status').forEach(sel => sel.addEventListener('change', onStatus));
     document.querySelectorAll('textarea.notes').forEach(t => t.addEventListener('blur', onNotes));
+    document.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => openTaskModal(b.dataset.add, b.dataset.name)));
   }
 
   async function patch(id, payload, savedEl) {
@@ -217,6 +320,22 @@
 
   document.getElementById('search').addEventListener('input', render);
   document.getElementById('refresh').addEventListener('click', () => load().catch(() => {}));
+
+  // task modal
+  document.getElementById('task-cancel').addEventListener('click', closeTaskModal);
+  document.getElementById('task-modal').addEventListener('click', e => { if (e.target.id === 'task-modal') closeTaskModal(); });
+  document.getElementById('task-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const title = document.getElementById('task-title').value.trim();
+    if (!title || !taskLeadId) return;
+    const due_date = document.getElementById('task-due').value || null;
+    try {
+      const res = await fetch('/api/tasks', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ lead_id: taskLeadId, title, due_date }) });
+      if (!res.ok) throw new Error();
+      closeTaskModal();
+      loadTasks().catch(() => {});
+    } catch (e) { alert('Could not add the task.'); }
+  });
   document.getElementById('logout').addEventListener('click', () => { sessionStorage.removeItem('tsb_pw'); PW = ''; document.getElementById('pw').value = ''; showGate(); });
 
   // auto-login if we already have a password stored this session
