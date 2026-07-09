@@ -1,0 +1,9 @@
+{
+  "name": "true-source-bio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "True Source Bio landing page + simple lead CRM",
+  "dependencies": {
+    "@vercel/postgres": "^0.10.0"
+  }
+}

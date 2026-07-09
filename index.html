@@ -5,9 +5,10 @@
   TO SWAP IN YOUR REAL LOGO: save it as logo.png next to this file and replace
   the <svg class="logo-mark">...</svg> block with: <img src="logo.png" alt="True Source Bio" class="logo-img">
 
-  TO CONNECT THE TYPEFORM: build your form (see COPY.md sections 5-10), then in the
-  #book section replace REPLACE_WITH_TYPEFORM_ID with your form ID and delete the
-  .form-placeholder div. The Typeform embed script is already wired at the bottom.
+  LEAD FORM: native HTML form (no Typeform). Submissions POST to FORM_ENDPOINT,
+  set in the <script> at the bottom of this file. Paste your endpoint there
+  (Google Apps Script / Formspree / Web3Forms). Until it's set, the form shows the
+  success screen on submit for local preview but does NOT store leads.
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -144,15 +145,24 @@
   .book h2 { font-size: clamp(26px, 3.6vw, 38px); font-weight: 800; margin-bottom: 12px; letter-spacing: -0.01em; }
   .book p { color: #C9D8E6; font-size: 17px; max-width: 48ch; margin: 0 auto 30px; }
   .form-shell { background: #fff; border-radius: 16px; padding: 8px; max-width: 640px; margin: 0 auto; position: relative; z-index: 1; }
-  /* Empty until a real form ID is set — collapses so no blank gap shows. When live, add style="height:600px" to the embed div. */
-  #typeform-embed:not(:empty) { min-height: 600px; border-radius: 12px; overflow: hidden; }
-  .form-placeholder {
-    min-height: 420px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 14px; padding: 40px 24px; color: var(--muted); text-align: center;
-    border: 2px dashed var(--line); border-radius: 12px;
+  .lead-form { display: flex; flex-direction: column; gap: 14px; padding: 26px 22px; text-align: left; }
+  .lead-form label { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: -6px; }
+  .lead-form input, .lead-form select {
+    width: 100%; padding: 13px 14px; border: 1px solid var(--line); border-radius: 10px;
+    font-size: 16px; font-family: inherit; color: var(--ink); background: #fff; -webkit-appearance: none; appearance: none;
   }
-  .form-placeholder strong { color: var(--navy); font-size: 18px; }
-  .form-placeholder .btn { margin-top: 8px; }
+  .lead-form select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235A6B7B' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 38px; }
+  .lead-form input:focus, .lead-form select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(47,129,196,0.15); }
+  .lead-form button { margin-top: 6px; width: 100%; border: none; cursor: pointer; }
+  .lead-form button:disabled { opacity: .7; cursor: default; }
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+  .form-note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 2px; }
+  .form-error { color: #C0392B; font-size: 13px; text-align: center; display: none; margin-top: 2px; }
+  .form-error.show { display: block; }
+  .form-success { display: none; padding: 44px 26px; text-align: center; }
+  .form-success.show { display: block; }
+  .form-success h3 { color: var(--navy); font-size: 23px; font-weight: 800; margin-bottom: 10px; }
+  .form-success p { color: var(--muted); font-size: 15px; margin-bottom: 20px; }
 
   /* ---------- Footer ---------- */
   footer { border-top: 1px solid var(--line); padding: 30px 0; }
@@ -241,12 +251,38 @@
       <h2>Let's Find Your Peptide Supplier</h2>
       <p>Four quick questions so I can point you to the right vendors — takes under a minute.</p>
       <div class="form-shell">
-        <!-- When your Typeform is live: replace REPLACE_WITH_TYPEFORM_ID below and delete the .form-placeholder div -->
-        <div id="typeform-embed" data-tf-live="REPLACE_WITH_TYPEFORM_ID"></div>
-        <div class="form-placeholder">
-          <strong>Your Typeform embeds here</strong>
-          <span>Build the form (name · company · email · qualifying question) per COPY.md,<br>then drop its ID into this page.</span>
-          <a href="#book" class="btn" onclick="alert('Swap in your Typeform ID or Calendly link here.'); return false;">Book a Sourcing Call</a>
+        <form id="lead-form" class="lead-form" novalidate>
+          <label for="lf-name">Your name</label>
+          <input id="lf-name" name="name" type="text" autocomplete="name" required placeholder="Jane Doe">
+
+          <label for="lf-company">Company or brand name</label>
+          <input id="lf-company" name="company" type="text" autocomplete="organization" required placeholder="Acme Peptides">
+
+          <label for="lf-email">Best email to reach you</label>
+          <input id="lf-email" name="email" type="email" autocomplete="email" required placeholder="jane@acmepeptides.com">
+
+          <label for="lf-stage">Where are you with offering peptides?</label>
+          <select id="lf-stage" name="stage" required>
+            <option value="" disabled selected>Select one…</option>
+            <option>Already selling — looking for better or backup suppliers</option>
+            <option>Launching soon — need a supplier before I go live</option>
+            <option>Exploring — want to understand vendor options first</option>
+            <option>I run a clinic/practice and want to add peptides</option>
+            <option>Just researching, no timeline yet</option>
+          </select>
+
+          <!-- honeypot: hidden from humans, bots fill it → we drop the submission -->
+          <input type="text" name="website" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true">
+
+          <button type="submit" class="btn">Book a Sourcing Call</button>
+          <p class="form-error" id="lf-error">Something went wrong — please email me directly instead.</p>
+          <p class="form-note">No spam. Your details stay between us.</p>
+        </form>
+        <div class="form-success" id="lead-success">
+          <h3>You're in — let's talk sourcing.</h3>
+          <p>I'll review your answers and come ready with vendor options that fit.</p>
+          <!-- Swap href for your real Calendly link -->
+          <a href="#" class="btn" id="calendly-link" target="_blank" rel="noopener">Grab a time now</a>
         </div>
       </div>
     </div>
@@ -263,5 +299,39 @@
   </div>
 </footer>
 
-<!-- Typeform embed script — activates once you set a real data-tf-live ID above -->
-<script src="//embed.typeform.com/next/embed.js"></script>
+<!-- Lead form handler -->
+<script>
+  // Submissions POST to our own serverless function, which saves to Vercel Postgres.
+  const FORM_ENDPOINT = "/api/lead";
+
+  const form = document.getElementById('lead-form');
+  const successEl = document.getElementById('lead-success');
+  const errorEl = document.getElementById('lf-error');
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    errorEl.classList.remove('show');
+    if (!form.reportValidity()) return;
+
+    const btn = form.querySelector('button[type="submit"]');
+    const label = btn.textContent;
+    btn.textContent = 'Sending…';
+    btn.disabled = true;
+
+    try {
+      const data = Object.fromEntries(new FormData(form).entries());
+      const res = await fetch(FORM_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('status ' + res.status);
+      form.style.display = 'none';
+      successEl.classList.add('show');
+    } catch (err) {
+      btn.textContent = label;
+      btn.disabled = false;
+      errorEl.classList.add('show');
+    }
+  });
+</script>

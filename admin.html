@@ -1,0 +1,224 @@
+<!--
+  True Source Bio — simple lead CRM.
+  Password-gated view of everything submitted through the landing-page form.
+  Auth: enter the ADMIN_PASSWORD you set in Vercel; it's kept in sessionStorage
+  and sent as a Bearer token to /api/leads. Clears when you close the tab.
+-->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Leads · True Source Bio</title>
+
+<style>
+  :root {
+    --navy: #123A5E; --navy-deep: #0E2C48; --blue: #2F81C4; --blue-light: #3FA0DC;
+    --ink: #0E2C48; --muted: #5A6B7B; --line: #E4EAF0; --bg: #F5F8FB;
+    --new: #2F81C4; --contacted: #8A6D3B; --qualified: #6C4FB6; --won: #1E8E5A; --lost: #B0392B;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  a { color: var(--blue); }
+
+  /* Login */
+  .gate { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .gate-card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 34px 30px; width: 100%; max-width: 380px; box-shadow: 0 12px 34px rgba(18,58,94,.10); text-align: center; }
+  .gate-card h1 { font-size: 20px; color: var(--navy); margin-bottom: 6px; }
+  .gate-card p { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+  .gate-card input { width: 100%; padding: 13px 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 16px; margin-bottom: 12px; }
+  .gate-card input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(47,129,196,.15); }
+  .btn { display: inline-block; width: 100%; padding: 13px 20px; border: none; border-radius: 999px; background: var(--blue); color: #fff; font-weight: 700; font-size: 16px; cursor: pointer; }
+  .btn:hover { background: var(--navy); }
+  .gate-err { color: var(--lost); font-size: 13px; margin-top: 10px; min-height: 18px; }
+
+  /* App */
+  .app { display: none; max-width: 1180px; margin: 0 auto; padding: 22px 18px 60px; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .brand svg { height: 34px; width: auto; display: block; }
+  .brand b { font-size: 15px; letter-spacing: 1.5px; color: var(--navy); }
+  .brand span { font-size: 12px; color: var(--muted); display: block; letter-spacing: .5px; }
+  .topbar .right { display: flex; align-items: center; gap: 10px; }
+  .link-btn { background: none; border: 1px solid var(--line); color: var(--muted); padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .link-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+  .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+  .tile { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .tile .n { font-size: 26px; font-weight: 800; color: var(--navy); line-height: 1; }
+  .tile .l { font-size: 12px; color: var(--muted); margin-top: 5px; text-transform: uppercase; letter-spacing: .6px; }
+  @media (max-width: 720px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .toolbar input[type=search] { flex: 1; min-width: 200px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 15px; }
+  .toolbar input[type=search]:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(47,129,196,.15); }
+  .count { font-size: 13px; color: var(--muted); }
+
+  .table-wrap { background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 820px; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); padding: 13px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td .nm { font-weight: 700; color: var(--navy); }
+  td .co { color: var(--muted); font-size: 13px; }
+  td .em a { text-decoration: none; }
+  td .date { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  td .stage { font-size: 13px; color: var(--ink); max-width: 220px; }
+
+  select.status { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; }
+  .st-New { color: var(--new); } .st-Contacted { color: var(--contacted); } .st-Qualified { color: var(--qualified); } .st-Won { color: var(--won); } .st-Lost { color: var(--lost); }
+
+  textarea.notes { width: 200px; min-height: 40px; border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; font-size: 13px; font-family: inherit; resize: vertical; color: var(--ink); }
+  textarea.notes:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(47,129,196,.12); }
+
+  .empty { padding: 50px 20px; text-align: center; color: var(--muted); }
+  .saved { color: var(--won); font-size: 11px; margin-top: 3px; height: 13px; }
+</style>
+
+<!-- ============ LOGIN GATE ============ -->
+<div class="gate" id="gate">
+  <form class="gate-card" id="gate-form">
+    <h1>True Source Bio — Leads</h1>
+    <p>Enter your admin password to view submissions.</p>
+    <input type="password" id="pw" placeholder="Admin password" autocomplete="current-password" autofocus>
+    <button class="btn" type="submit">Unlock</button>
+    <div class="gate-err" id="gate-err"></div>
+  </form>
+</div>
+
+<!-- ============ APP ============ -->
+<div class="app" id="app">
+  <div class="topbar">
+    <div class="brand">
+      <svg viewBox="8 6 105 101" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <polygon points="64,34 52,14 28,14 16,34 28,54 52,54" fill="#123A5E"/>
+        <polygon points="103,57 91,36 67,36 56,57 67,77 91,77" fill="#2F81C4"/>
+        <polygon points="64,79 52,59 28,59 16,79 28,99 52,99" fill="none" stroke="#2F81C4" stroke-width="6.5" stroke-linejoin="round"/>
+      </svg>
+      <div><b>TRUE SOURCE BIO</b><span>Lead CRM</span></div>
+    </div>
+    <div class="right">
+      <button class="link-btn" id="refresh">Refresh</button>
+      <button class="link-btn" id="logout">Log out</button>
+    </div>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="toolbar">
+    <input type="search" id="search" placeholder="Search name, company, email…">
+    <span class="count" id="count"></span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Name / Company</th><th>Email</th><th>Where they are</th><th>Status</th><th>Notes</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty" style="display:none">No leads yet. They'll show up here the moment someone submits the form.</div>
+  </div>
+</div>
+
+<script>
+  const STATUSES = ['New', 'Contacted', 'Qualified', 'Won', 'Lost'];
+  const gate = document.getElementById('gate');
+  const app = document.getElementById('app');
+  const gateErr = document.getElementById('gate-err');
+  let PW = sessionStorage.getItem('tsb_pw') || '';
+  let LEADS = [];
+
+  function authHeaders(extra) { return Object.assign({ 'Authorization': 'Bearer ' + PW }, extra || {}); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+  function fmtDate(iso) { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
+
+  async function load() {
+    const res = await fetch('/api/leads', { headers: authHeaders() });
+    if (res.status === 401) throw new Error('unauthorized');
+    if (!res.ok) throw new Error('server');
+    const data = await res.json();
+    LEADS = data.leads || [];
+    render();
+  }
+
+  function render() {
+    const q = (document.getElementById('search').value || '').toLowerCase();
+    const filtered = LEADS.filter(l => !q || [l.name, l.company, l.email, l.stage].join(' ').toLowerCase().includes(q));
+
+    // stat tiles
+    const counts = { New: 0, Contacted: 0, Qualified: 0, Won: 0, Lost: 0 };
+    LEADS.forEach(l => { if (counts[l.status] !== undefined) counts[l.status]++; });
+    document.getElementById('tiles').innerHTML =
+      `<div class="tile"><div class="n">${LEADS.length}</div><div class="l">Total</div></div>` +
+      STATUSES.map(s => `<div class="tile"><div class="n">${counts[s]}</div><div class="l">${s}</div></div>`).join('');
+
+    document.getElementById('count').textContent = filtered.length + (filtered.length === 1 ? ' lead' : ' leads');
+    document.getElementById('empty').style.display = LEADS.length ? 'none' : 'block';
+
+    document.getElementById('rows').innerHTML = filtered.map(l => `
+      <tr data-id="${l.id}">
+        <td><span class="date">${fmtDate(l.created_at)}</span></td>
+        <td><div class="nm">${esc(l.name)}</div><div class="co">${esc(l.company) || '—'}</div></td>
+        <td class="em"><a href="mailto:${esc(l.email)}">${esc(l.email)}</a></td>
+        <td><div class="stage">${esc(l.stage) || '—'}</div></td>
+        <td>
+          <select class="status st-${esc(l.status)}" data-id="${l.id}">
+            ${STATUSES.map(s => `<option ${s === l.status ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </td>
+        <td>
+          <textarea class="notes" data-id="${l.id}" placeholder="Add a note…">${esc(l.notes)}</textarea>
+          <div class="saved" data-saved="${l.id}"></div>
+        </td>
+      </tr>`).join('');
+
+    document.querySelectorAll('select.status').forEach(sel => sel.addEventListener('change', onStatus));
+    document.querySelectorAll('textarea.notes').forEach(t => t.addEventListener('blur', onNotes));
+  }
+
+  async function patch(id, payload, savedEl) {
+    try {
+      const res = await fetch('/api/leads', { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(Object.assign({ id }, payload)) });
+      if (!res.ok) throw new Error();
+      const local = LEADS.find(l => String(l.id) === String(id));
+      if (local) Object.assign(local, payload);
+      if (savedEl) { savedEl.textContent = 'Saved ✓'; setTimeout(() => savedEl.textContent = '', 1500); }
+    } catch (e) {
+      if (savedEl) savedEl.textContent = 'Save failed';
+      else alert('Could not save — check your connection.');
+    }
+  }
+
+  function onStatus(e) {
+    const id = e.target.dataset.id, status = e.target.value;
+    e.target.className = 'status st-' + status;
+    patch(id, { status });
+  }
+  function onNotes(e) {
+    const id = e.target.dataset.id;
+    patch(id, { notes: e.target.value }, document.querySelector(`[data-saved="${id}"]`));
+  }
+
+  function showApp() { gate.style.display = 'none'; app.style.display = 'block'; }
+  function showGate() { app.style.display = 'none'; gate.style.display = 'flex'; }
+
+  document.getElementById('gate-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    PW = document.getElementById('pw').value;
+    gateErr.textContent = '';
+    try {
+      await load();
+      sessionStorage.setItem('tsb_pw', PW);
+      showApp();
+    } catch (err) {
+      gateErr.textContent = err.message === 'unauthorized' ? 'Wrong password.' : 'Could not reach the server.';
+      PW = '';
+    }
+  });
+
+  document.getElementById('search').addEventListener('input', render);
+  document.getElementById('refresh').addEventListener('click', () => load().catch(() => {}));
+  document.getElementById('logout').addEventListener('click', () => { sessionStorage.removeItem('tsb_pw'); PW = ''; document.getElementById('pw').value = ''; showGate(); });
+
+  // auto-login if we already have a password stored this session
+  if (PW) { load().then(showApp).catch(() => { sessionStorage.removeItem('tsb_pw'); PW = ''; showGate(); }); }
+</script>
