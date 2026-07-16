@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     await ensureTable();
 
     if (req.method === 'GET') {
-      const { rows } = await sql`SELECT * FROM leads ORDER BY created_at DESC`;
+      const rows = await sql`SELECT * FROM leads ORDER BY created_at DESC`;
       res.status(200).json({ leads: rows });
       return;
     }

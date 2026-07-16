@@ -1,17 +1,17 @@
-import { createPool } from '@vercel/postgres';
+import { neon } from '@neondatabase/serverless';
 
-// Connect using whichever env var Vercel's Postgres/Neon integration created.
-// (Different Vercel plans expose POSTGRES_URL or DATABASE_URL — support both.)
-const connectionString =
+// Neon serverless driver over HTTP — ideal for Vercel functions.
+// Uses whichever connection string the Vercel/Neon integration exposed.
+const sql = neon(
   process.env.POSTGRES_URL ||
   process.env.DATABASE_URL ||
-  process.env.POSTGRES_PRISMA_URL ||
-  process.env.DATABASE_URL_UNPOOLED;
+  process.env.POSTGRES_PRISMA_URL
+);
 
-const pool = createPool(connectionString ? { connectionString } : undefined);
-export const sql = pool.sql.bind(pool);
+export { sql };
 
 // Create tables once, on demand. Safe to call on every request.
+// NOTE: neon()'s tagged template returns an array of rows directly (not { rows }).
 export async function ensureTable() {
   await sql`CREATE TABLE IF NOT EXISTS leads (
     id         SERIAL PRIMARY KEY,

@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     await ensureTable();
 
     if (req.method === 'GET') {
-      const { rows } = await sql`
+      const rows = await sql`
         SELECT t.*, l.name AS lead_name, l.email AS lead_email
         FROM tasks t JOIN leads l ON l.id = t.lead_id
         WHERE t.done = false
