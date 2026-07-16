@@ -47,6 +47,19 @@ export default async function handler(req, res) {
       return;
     }
 
+    if (req.method === 'DELETE') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+      const { id } = body;
+      if (!id) {
+        res.status(400).json({ error: 'id is required' });
+        return;
+      }
+      // tasks have ON DELETE CASCADE, so a lead's follow-ups go with it
+      await sql`DELETE FROM leads WHERE id = ${id}`;
+      res.status(200).json({ ok: true });
+      return;
+    }
+
     res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
     console.error('leads admin failed:', err);

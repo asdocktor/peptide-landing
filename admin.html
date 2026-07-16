@@ -87,6 +87,9 @@
   .mini { background: none; border: 1px solid var(--line); color: var(--blue); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
   .mini:hover { border-color: var(--blue); background: rgba(47,129,196,.06); }
   .fu .mini { margin-left: auto; }
+  .mini.danger { color: var(--lost); }
+  .mini.danger:hover { border-color: var(--lost); background: rgba(176,57,43,.06); }
+  .row-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 
   /* modal */
   .modal { position: fixed; inset: 0; background: rgba(14,44,72,.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
@@ -270,12 +273,27 @@
           <textarea class="notes" data-id="${l.id}" placeholder="Add a note…">${esc(l.notes)}</textarea>
           <div class="saved" data-saved="${l.id}"></div>
         </td>
-        <td><button class="mini" data-add="${l.id}" data-name="${esc(l.name)}">+ Task</button></td>
+        <td><div class="row-actions">
+          <button class="mini" data-add="${l.id}" data-name="${esc(l.name)}">+ Task</button>
+          <button class="mini danger" data-del="${l.id}" data-name="${esc(l.name)}">Delete</button>
+        </div></td>
       </tr>`).join('');
 
     document.querySelectorAll('select.status').forEach(sel => sel.addEventListener('change', onStatus));
     document.querySelectorAll('textarea.notes').forEach(t => t.addEventListener('blur', onNotes));
     document.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => openTaskModal(b.dataset.add, b.dataset.name)));
+    document.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => deleteLead(b.dataset.del, b.dataset.name)));
+  }
+
+  async function deleteLead(id, name) {
+    if (!confirm('Delete lead "' + name + '"? This also removes its follow-ups and cannot be undone.')) return;
+    try {
+      const res = await fetch('/api/leads', { method: 'DELETE', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id }) });
+      if (!res.ok) throw new Error();
+      LEADS = LEADS.filter(l => String(l.id) !== String(id));
+      render();
+      loadTasks().catch(() => {});
+    } catch (e) { alert('Could not delete the lead.'); }
   }
 
   async function patch(id, payload, savedEl) {
