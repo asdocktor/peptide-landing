@@ -8,9 +8,9 @@ Stop Guessing Which Peptide Supplier to Trust
 I connect healthcare practitioners to vetted, GMP-verified suppliers and pharmacies — so you launch your peptide program with product you'd put your name on.
 
 ## 3. Three outcome bullets
-- Vetted suppliers in days, not months — from relationships I've already tested.
+- Vetted suppliers instantly, not days or months — from relationships I've already tested.
 - Third-party-tested product — so your COAs hold up to buyer scrutiny.
-- Skip the gray-market risk — I know which vendors ship what they claim.
+- Skip the gray market entirely — USA-made product from US pharmacies, not overseas research chemicals.
 
 ## 4. CTA button
 Book a Sourcing Call
