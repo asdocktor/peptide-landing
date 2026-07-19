@@ -5,7 +5,7 @@ Peptide B2B Consulting Landing Page · Positioning: peptide sourcing & manufactu
 Stop Guessing Which Peptide Supplier to Trust
 
 ## 2. Hero subheadline
-I connect healthcare practitioners to vetted, GMP-verified suppliers and pharmacies — so you launch your peptide program with product you'd put your name on.
+I connect healthcare practitioners to vetted, GMP-verified suppliers, 503A and 503B pharmacies — so you launch your peptide program with product you'd put your name on.
 
 ## 3. Three outcome bullets
 - Vetted suppliers instantly, not days or months — from relationships I've already tested.
