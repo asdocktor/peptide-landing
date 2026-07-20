@@ -33,7 +33,7 @@ Four quick questions so I can point you to the right vendors — takes under a m
 
 ## 10. Thank-you screen
 **You're in — let's talk sourcing.**
-I'll review your answers and come ready with vendor options that fit. Grab a time now: [Calendly link]
+I'll review your answers and come ready with vendor options that fit. Grab a time now: https://calendly.com/adam-truesourcebio
 
 ## A/B test headlines
 - A: The Peptide Suppliers Serious Brands Actually Use
